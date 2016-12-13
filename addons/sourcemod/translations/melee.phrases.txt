@@ -1,0 +1,59 @@
+"Phrases"
+{
+	"On"
+	{
+		"en"		"On"
+	}
+	"Off"
+	{
+		"en"		"Off"
+	}
+	"Melee_Disabled"
+	{
+		"en"		"Melee mode is disabled on this map!"
+	}
+	"Vote_Canceled"
+	{
+		"en"		"Vote canceled! Melee mode was manually changed."
+	}
+	"Vote_InProgress"
+	{
+		"en"		"[SM] Vote is already in progress."
+	}
+	"Melee_Action"
+	{
+		"#format"	"{1:c},{2:s}"
+		"en"		"Melee only is: {1}{2}"
+	}
+	"Vote_Title"
+	{
+		"#format"	"{1:s}"
+		"en"		"Turn melee only mode: {1}?"
+	}
+	"Yes"
+	{
+		"en"		"Let's do it!"
+	}
+	"No"
+	{
+		"en"		"No way!"
+	}
+	"Vote_Results"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"Vote results: Yes: {1} No: {2}"
+	}
+	"Vote_Success"
+	{
+		"en"		"Vote successful! Melee mode will change."
+	}
+	"Vote_Failed"
+	{
+		"en"		"Vote failed! Melee mode will not change."
+	}
+	"Arena_Melee"
+	{
+		"#format"	"{1:c},{2:c}"
+		"en"		"Randomly chose {1}melee{2} for this round!"
+	}
+}
