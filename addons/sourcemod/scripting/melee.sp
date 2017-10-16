@@ -6,8 +6,6 @@
 
 #define PLUGIN_VERSION "0.7"
 
-#define ITEM_SPYCICLE 649
-
 new bool:g_bEnabled;
 new bool:g_bHealing;
 new bool:g_bRandomRound;
@@ -68,7 +66,7 @@ public OnPluginStart()
 		SetFailState("Could not read sdkhooks.games gamedata.");
 		return;
 	}
-	
+
 	StartPrepSDKCall(SDKCall_Player);
 	PrepSDKCall_SetFromConf(hConf, SDKConf_Virtual, "Weapon_Switch");
 	PrepSDKCall_AddParameter(SDKType_CBaseEntity, SDKPass_Pointer);
@@ -82,7 +80,7 @@ public OnPluginStart()
 	}
 
 	CloseHandle(hConf);
-	
+
 	hConf = LoadGameConfigFile("melee");
 	if(hConf == INVALID_HANDLE)
 	{
@@ -101,7 +99,7 @@ public OnPluginStart()
 	}
 
 	CloseHandle(hConf);
-	
+
 	CreateConVar("melee_version", PLUGIN_VERSION, "Plugin Version", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
 	g_hCvarHealing = CreateConVar("melee_healing", "0", "1 - Allow healing | 0 - Disallow healing");
 	g_hCvarFlags = CreateConVar("melee_flag", "z", "Admin flag for melee only");
@@ -112,27 +110,27 @@ public OnPluginStart()
 	g_hCvarJumper = CreateConVar("melee_jumper", "0", "1 - Allow sticky/rocket jumper | 0 - Disallow these weapons");
 	g_hCvarCircuit = CreateConVar("melee_circuit", "0", "1 - Allow short circuit | 0 - Disallow short circuit");
 	g_hCvarJetpack = CreateConVar("melee_jetpack", "0", "1 - Allow thermal thruster | 0 - Disallow");
-	
+
 	g_hCvarHint = FindConVar("sm_vote_progress_hintbox");
-	
+
 	RegConsoleCmd("melee", Command_Melee);
 	RegConsoleCmd("votemelee", Command_VoteMelee);
-	
+
 	HookEvent("arena_round_start", Event_ArenaRoundStart);
 	HookEvent("arena_win_panel", Event_ArenaRoundEnd);
-	
+
 	HookConVarChange(g_hCvarHealing, ConVarChange_Healing);
 	HookConVarChange(g_hCvarMeleeMode, ConVarChange_Mode);
 	HookConVarChange(g_hCvarJumper, ConVarChange_Jumper);
 	HookConVarChange(g_hCvarCircuit, ConVarChange_Circuit);
 	HookConVarChange(g_hCvarJetpack, ConVarChange_Jetpack);
-	
+
 	LoadTranslations("melee.phrases");
 	LoadTranslations("common.phrases");
-	
+
 	Format(g_strOn, sizeof(g_strOn), "%T", "On", LANG_SERVER);
 	Format(g_strOff, sizeof(g_strOff), "%T", "Off", LANG_SERVER);
-	
+
 	g_hForwardMelee = CreateGlobalForward("OnSetMeleeMode", ET_Ignore, Param_Cell);
 	g_hForwardMeleeArena = CreateGlobalForward("OnMeleeArena", ET_Ignore);
 }
@@ -150,9 +148,9 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 {
 	CreateNative("SetMeleeMode", Native_SetMeleeMode);
 	CreateNative("GetMeleeMode", Native_GetMeleeMode);
-	
+
 	RegPluginLibrary("melee");
-	
+
 	return APLRes_Success;
 }
 
@@ -176,7 +174,7 @@ public OnConfigsExecuted()
 	g_bJumper = GetConVarBool(g_hCvarJumper);
 	g_bCircuit = GetConVarBool(g_hCvarCircuit);
 	g_bJetpack = GetConVarBool(g_hCvarJetpack);
-	
+
 	new Handle:hTopMenu;
 	if(LibraryExists("adminmenu") && ((hTopMenu = GetAdminTopMenu()) != INVALID_HANDLE))
 	{
@@ -203,47 +201,35 @@ public Action:Command_Melee(client, args)
 			return Plugin_Handled;
 		}
 	}
-	
+
 	if(GetConVarInt(g_hCvarDisabled))
 	{
-		ReplyToCommand(client, "\x04 %T", "Melee_Disabled", LANG_SERVER);	
+		ReplyToCommand(client, "\x04 %T", "Melee_Disabled", LANG_SERVER);
 		return Plugin_Handled;
 	}
-	
+
 	// A melee vote is currently taking place
 	if(IsVoteInProgress() && g_bVoting)
 	{
 		CancelVote();
 		PrintToChatAll("\x04 %T", "Vote_Canceled", LANG_SERVER);
 	}
-	
-	// Toggle
-	if(args == 0)
-	{
-		if(g_bEnabled == true)
-		{
-			SetMeleeMode(false);
-		}else{
-			SetMeleeMode(true);
-		}
-	}else{
-		new String:strArg1[5];
+	//Toggle by default
+	bool newValue = !g_bEnabled;
+	//If arg provided, parse
+	if(args > 0){
+		new String:strArg1[8];
 		GetCmdArg(1, strArg1, sizeof(strArg1));
-		
-		if(StringToInt(strArg1) >= 1)
-		{
-			SetMeleeMode(true);
-		}else{
-			SetMeleeMode(false);
-		}
+		newValue = StringToInt(strArg1) >= 1;
 	}
-	
+	SetMeleeMode(newValue);
+
 	return Plugin_Handled;
 }
 
 public ConVarChange_Healing(Handle:convar, const String:oldValue[], const String:newValue[])
 {
-	g_bHealing = bool:StringToInt(newValue);
+	g_bHealing = !!StringToInt(newValue);
 }
 
 public ConVarChange_Mode(Handle:convar, const String:oldValue[], const String:newValue[])
@@ -253,7 +239,7 @@ public ConVarChange_Mode(Handle:convar, const String:oldValue[], const String:ne
 
 public ConVarChange_Jumper(Handle:convar, const String:oldValue[], const String:newValue[])
 {
-	g_bJumper = bool:StringToInt(newValue);
+	g_bJumper = !!StringToInt(newValue);
 }
 
 public ConVarChange_Circuit(Handle:convar, const String:oldValue[], const String:newValue[])
@@ -269,106 +255,112 @@ public ConVarChange_Jetpack(Handle:convar, const String:oldValue[], const String
 SetMeleeMode(bool:bEnabled, bool:bVerbose=true)
 {
 	if(GetConVarInt(g_hCvarDisabled)) return;
-	
-	if(bEnabled)
-	{
-		g_bEnabled = true;
-	}else{
-		g_bEnabled = false;
-	}
-	
+
+	g_bEnabled = bEnabled;
+
 	SetSentryDisable(g_bEnabled);
 	SetBotMelee(g_bEnabled);
-	
+
 	Call_StartForward(g_hForwardMelee);
 	Call_PushCell(bEnabled);
 	Call_Finish();
-	
+
 	if(bVerbose) PrintToChatAll("\x04 %T", "Melee_Action", LANG_SERVER, 0x01, g_bEnabled ? g_strOn : g_strOff);
 }
 
+#define ITEM_SPYCICLE 649
 public OnGameFrame()
 {
-	if(g_bEnabled)
+	if (!g_bEnabled) {
+		return;
+	}
+
+	decl String:strClass[32];
+	for(new i=1; i<=MaxClients; i++)
 	{
-		decl String:strClass[32];
-		for(new i=1; i<=MaxClients; i++)
+		if (!IsClientInGame(i)) {
+			continue;
+		}
+		if (!IsPlayerAlive(i)) {
+			continue;
+		}
+
+		new iWeapon = GetPlayerWeaponSlot(i, TFWeaponSlot_Melee);
+		new iActive = GetActiveWeapon(i);
+
+		if(iWeapon > MaxClients && iActive > MaxClients && iWeapon != iActive)
 		{
-			if(IsClientInGame(i) && IsPlayerAlive(i))
+			new iDefMelee = GetItemDefinition(iWeapon);
+			new iDefActive = GetItemDefinition(iActive);
+			GetEdictClassname(iActive, strClass, sizeof(strClass));
+
+			if(iDefMelee == ITEM_SPYCICLE && GetKnifeMeltTimestamp(iWeapon) != 0.0)
 			{
-				new iWeapon = GetPlayerWeaponSlot(i, TFWeaponSlot_Melee);
-				new iActive = GetActiveWeapon(i);
-				
-				if(iWeapon > MaxClients && iActive > MaxClients && iWeapon != iActive)
-				{
-					new iDefMelee = GetItemDefinition(iWeapon);
-					new iDefActive = GetItemDefinition(iActive);
-					GetEdictClassname(iActive, strClass, sizeof(strClass));
+				SetKnifeMeltTimestamp(iWeapon, 0.0);
+			}
 
-					if(iDefMelee == ITEM_SPYCICLE && GetKnifeMeltTimestamp(iWeapon) != 0.0)
-					{
-						SetKnifeMeltTimestamp(iWeapon, 0.0);
-					}
+			if(strcmp(strClass, "tf_weapon_minigun") == 0)
+			{
+				ResetMinigun(iActive, 0);
+				TF2_RemoveCondition(i, TFCond_Slowed);
+			}
 
-					if(strcmp(strClass, "tf_weapon_minigun") == 0)
-					{
-						ResetMinigun(iActive, 0);
-						TF2_RemoveCondition(i, TFCond_Slowed);
-					}
-
-					if(g_iMeleeMode) // Strict melee mode
-					{
-						if(!CanUseWeaponInStrict(iDefActive))
-						{
-							SDK_ResetWeapon(iActive);
-							SetActiveWeapon(i, iWeapon);
-						}
-					}else{
-						if(!CanUseWeapon(iDefActive))
-						{
-							SDK_ResetWeapon(iActive);
-							SetActiveWeapon(i, iWeapon);
-						}
-					}
-				}
+			// if (strict AND can't use in strict) OR can't use at all
+			if((g_iMeleeMode && !CanUseWeaponInStrict(strClass)) || !CanUseWeapon(strClass, iDefActive))
+			{
+				SDK_ResetWeapon(iActive);
+				SetActiveWeapon(i, iWeapon);
 			}
 		}
+
 	}
 }
 
-bool CanUseWeaponInStrict(int itemDef)
+bool CanUseWeaponInStrict(const char[] strClass)
 {
-	switch(itemDef)
-	{
-		case 1155: return true; // Passtime Gun.
-	}
-
-	return false;
+	return StrEqual(strClass, "tf_weapon_passtime_gun");	//Is this too slow?
 }
 
-bool CanUseWeapon(int itemDef)
+#define FLAG_ALWAYS 0b1
+#define FLAG_HEALING 0b10
+#define FLAG_CIRCUIT 0b100
+#define FLAG_JETPACK 0b1000
+bool CanUseWeapon(const char[] strClass, int itemDef)
 {
-	switch(itemDef)
-	{
-		case 735,736,810,831,933,1080,1102: return true; // Spy Sapper / Upgradable Sapper / Recorder / Recorder Promo / Ap-Sap / Festive Sapper / Snack Attack
-		case 25,26,28,737: return true; // Engineer's Build & Destroy PDAs / Builder / Upgradable Build PDA
-		case 140,1086: return true; // Wrangler / Festive Wrangler
-		case 58,1083,1105: return true; // Jarate / Festive Jarate / Self-Aware Beauty Mark
-		case 42,159,311,433,863,1002,1190: return true; // Sandvich / Chocolate Bar / Buffalo Steak / Fishcake / Robo-Sandvich / Festive Sandvich / Second Banana
-		case 46,163,222,1121,1145: return true; // Bonk / Crit-a-Cola / Mad Milk / Mutated Milk / Festive Bonk
-		case 27: return true; // Spy Disguise PDA
-		case 129,226,354,1001: return true; // The Buff Banner / The Battalion's Backup / The Concheror / Festive Buff Banner
-		case 29,35,411,211,663: return g_bHealing; // Medigun / Kritzcrieg / The Quick-Fix / Strange Medigun / Festive Medigun
-		case 237,265: return g_bJumper; // Rocket/Sticky Jumper
-		case 528: return g_bCircuit; // Short Circuit
-		case 1069,1070,5605: return true; // Spell Books
-		case 1152: return true; // Grappling Hook
-		case 1179: return g_bJetpack; // Thermal Thruster
-		case 1180: return true; // Gas Passer
+	static StringMap hAllowed;
+	if (hAllowed == INVALID_HANDLE) {
+		hAllowed = new StringMap();
+		hAllowed.SetValue("tf_weapon_pda_engineer_build", FLAG_ALWAYS);
+		hAllowed.SetValue("tf_weapon_pda_engineer_destroy", FLAG_ALWAYS);
+		hAllowed.SetValue("tf_weapon_builder", FLAG_ALWAYS);
+		hAllowed.SetValue("tf_weapon_sapper", FLAG_ALWAYS);
+		hAllowed.SetValue("tf_weapon_pda_spy", FLAG_ALWAYS);
+		hAllowed.SetValue("tf_weapon_laser_pointer", FLAG_ALWAYS);
+		hAllowed.SetValue("tf_weapon_jar", FLAG_ALWAYS);
+		hAllowed.SetValue("tf_weapon_jar_milk", FLAG_ALWAYS);
+		hAllowed.SetValue("tf_weapon_lunchbox", FLAG_ALWAYS);
+		hAllowed.SetValue("tf_weapon_lunchbox_drink", FLAG_ALWAYS);
+		hAllowed.SetValue("tf_weapon_buff_item", FLAG_ALWAYS);
+		hAllowed.SetValue("tf_weapon_medigun", FLAG_HEALING);
+		hAllowed.SetValue("tf_weapon_mechanical_arm", FLAG_CIRCUIT);
+		hAllowed.SetValue("tf_weapon_grapplinghook", FLAG_ALWAYS);
+		hAllowed.SetValue("tf_weapon_spellbook", FLAG_ALWAYS);
+		hAllowed.SetValue("tf_weapon_rocketpack", FLAG_JETPACK);
+	}
+	// Rocket/Sticky Jumper
+	if (itemDef == 237 || itemDef == 265) {
+		return g_bJumper;
+	}
+	int val;
+	int valFlags = FLAG_ALWAYS | (view_as<int>(g_bHealing) << 1) | (view_as<int>(g_bCircuit) << 2) | (view_as<int>(g_bJetpack) << 3);
+	if (hAllowed.GetValue(strClass, val)) {
+		return (val & valFlags) != 0;
 	}
 
-	if(CanUseWeaponInStrict(itemDef)) return true;
-	
+	if (CanUseWeaponInStrict(strClass)) {
+		return true;
+	}
+
 	return false;
 }
 
@@ -418,17 +410,17 @@ stock bool:CheckAdminFlagsByString(client, const String:strFlagString[])
 		new iUserFlags = GetUserFlagBits(client);
 		return bool:(iUserFlags & ADMFLAG_ROOT || iUserFlags & ReadFlagString(strFlagString));
 	}
-	
+
 	return true;
 }
 
 public OnAdminMenuReady(Handle:hTopMenu)
-{	
+{
 	if(hTopMenu == g_hTopMenu)
 	{
 		return;
 	}
-	
+
 	new String:strFlags[5];
 	GetConVarString(g_hCvarFlags, strFlags, sizeof(strFlags));
 	new iFlags = ADMFLAG_ROOT;
@@ -436,22 +428,22 @@ public OnAdminMenuReady(Handle:hTopMenu)
 	{
 		iFlags = ReadFlagString(strFlags);
 	}
-	
+
 	g_hTopMenu = hTopMenu;
-	
+
 	new TopMenuObject:TopMenuServerCommands = FindTopMenuCategory(g_hTopMenu, ADMINMENU_SERVERCOMMANDS);
 	if(TopMenuServerCommands != INVALID_TOPMENUOBJECT)
 	{
 		AddToTopMenu(g_hTopMenu, "melee", TopMenuObject_Item, AdminMenu_Melee, TopMenuServerCommands, "melee", iFlags);
 	}
-	
+
 	GetConVarString(g_hCvarFlagsVoting, strFlags, sizeof(strFlags));
 	iFlags = ADMFLAG_ROOT;
 	if(!StrEqual(strFlags, ""))
 	{
 		iFlags = ReadFlagString(strFlags);
 	}
-	
+
 	new TopMenuObject:TopMenuVoting = FindTopMenuCategory(g_hTopMenu, ADMINMENU_VOTINGCOMMANDS);
 	if(TopMenuVoting != INVALID_TOPMENUOBJECT)
 	{
@@ -497,42 +489,42 @@ public Action:Command_VoteMelee(client, args)
 			return Plugin_Handled;
 		}
 	}
-	
+
 	if(GetConVarInt(g_hCvarDisabled))
 	{
 		ReplyToCommand(client, "\x04 %T", "Melee_Disabled", LANG_SERVER);
 		return Plugin_Handled;
 	}
-	
+
 	if(IsVoteInProgress())
 	{
 		ReplyToCommand(client, "\x01[SM] Vote is already in progress.");
 		return Plugin_Handled;
 	}
-	
+
 	if(!TestVoteDelay(client))
 	{
 		return Plugin_Handled;
 	}
-	
+
 	g_bVoting = true;
 	g_iVoteResults[0] = 0;
 	g_iVoteResults[1] = 0;
 	ShowActivity(client, "Started vote for melee only.");
-	
+
 	new Handle:hMenu = CreateMenu(MenuHandler_VoteMelee);
-	
+
 	SetMenuTitle(hMenu, "%T", "Vote_Title", LANG_SERVER, g_bEnabled ? g_strOff : g_strOn);
-	
+
 	decl String:strTemp[25];
 	Format(strTemp, sizeof(strTemp), "%T", "Yes", LANG_SERVER);
 	AddMenuItem(hMenu, "", strTemp);
 	Format(strTemp, sizeof(strTemp), "%T", "No", LANG_SERVER);
 	AddMenuItem(hMenu, "", strTemp);
-	
+
 	SetMenuExitButton(hMenu, false);
-	VoteMenuToAll(hMenu, 20);	
-	
+	VoteMenuToAll(hMenu, 20);
+
 	return Plugin_Handled;
 }
 
@@ -567,13 +559,13 @@ public Action:Event_ArenaRoundStart(Handle:event, const String:name[], bool:dont
 	{
 		g_bRandomRound = true;
 		SetMeleeMode(true, false);
-		
+
 		Call_StartForward(g_hForwardMeleeArena);
 		Call_Finish();
-		
+
 		PrintToChatAll("\x04 %T", "Arena_Melee", LANG_SERVER, 0x01, 0x04);
 	}
-	
+
 	return Plugin_Continue;
 }
 
@@ -584,7 +576,7 @@ public Action:Event_ArenaRoundEnd(Handle:event, const String:name[], bool:dontBr
 		g_bRandomRound = false;
 		SetMeleeMode(false);
 	}
-	
+
 	return Plugin_Continue;
 }
 
@@ -592,7 +584,7 @@ public Native_SetMeleeMode(Handle:plugin, numParams)
 {
 	new bool:bEnabled = bool:GetNativeCell(1);
 	new bool:bVerbose = bool:GetNativeCell(2);
-	
+
 	SetMeleeMode(bEnabled, bVerbose);
 }
 
@@ -604,19 +596,18 @@ public Native_GetMeleeMode(Handle:plugin, numParams)
 bool:TestVoteDelay(client)
 {
 	new delay = CheckVoteDelay();
-	
-	if(delay > 0)
+	if (delay > 0)
 	{
-		if(delay > 60)
+		if (delay > 60)
 		{
 			ReplyToCommand(client, "[SM] %t", "Vote Delay Minutes", delay % 60);
-		}else{
+		}
+		else
+		{
 			ReplyToCommand(client, "[SM] %t", "Vote Delay Seconds", delay);
 		}
-		
 		return false;
 	}
-	
 	return true;
 }
 
@@ -633,5 +624,5 @@ SDK_ResetWeapon(weapon)
 
 ResetMinigun(weapon, iState)
 {
-    SetEntData(weapon, g_iOffsetState, iState, 4, false);
+	SetEntData(weapon, g_iOffsetState, iState, 4, false);
 }
