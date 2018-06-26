@@ -4,7 +4,7 @@
 #include <tf2>
 #include <tf2_stocks>
 
-#define PLUGIN_VERSION "0.6"
+#define PLUGIN_VERSION "0.7.1"
 
 #define ITEM_SPYCICLE 649
 
@@ -13,6 +13,7 @@ new bool:g_bHealing;
 new bool:g_bRandomRound;
 new g_iMeleeMode;
 new bool:g_bJumper;
+new bool:g_bJetpack;
 new bool:g_bCircuit;
 
 new Handle:g_hCvarMeleeMode;
@@ -22,6 +23,7 @@ new Handle:g_hCvarFlagsVoting;
 new Handle:g_hCvarDisabled;
 new Handle:g_hCvarArena;
 new Handle:g_hCvarJumper;
+new Handle:g_hCvarJetpack;
 new Handle:g_hCvarCircuit;
 new Handle:g_hCvarHint;
 
@@ -47,7 +49,7 @@ new Handle:g_hForwardMeleeArena;
 public Plugin:myinfo = 
 {
 	name = "Melee",
-	author = "linux_lover",
+	author = "linux_lover and 200",
 	description = "Toggles melee only mode",
 	version = PLUGIN_VERSION,
 	url = "http://sourcemod.net"
@@ -108,6 +110,7 @@ public OnPluginStart()
 	g_hCvarArena = CreateConVar("melee_arena", "0.0", "Random chance for an arena melee round. Set between 0 and 1. Ex. 0 - Off, 0.25 - 25%", 0, true, 0.0, true, 1.0);
 	g_hCvarMeleeMode = CreateConVar("melee_mode", "0", "0 - Allow non-combat weapons | 1 - Only allow weapon in melee slot");
 	g_hCvarJumper = CreateConVar("melee_jumper", "0", "1 - Allow sticky/rocket jumper | 0 - Disallow these weapons");
+	g_hCvarJetpack = CreateConVar("melee_jetpack", "0", "1 - Allow Thermal Thruster | 0 - Disallow Thermal Thruster");
 	g_hCvarCircuit = CreateConVar("melee_circuit", "0", "1 - Allow short circuit | 0 - Disallow short circuit");
 	
 	g_hCvarHint = FindConVar("sm_vote_progress_hintbox");
@@ -121,6 +124,7 @@ public OnPluginStart()
 	HookConVarChange(g_hCvarHealing, ConVarChange_Healing);
 	HookConVarChange(g_hCvarMeleeMode, ConVarChange_Mode);
 	HookConVarChange(g_hCvarJumper, ConVarChange_Jumper);
+	HookConVarChange(g_hCvarJetpack, ConVarChange_Jetpack);
 	HookConVarChange(g_hCvarCircuit, ConVarChange_Circuit);
 	
 	LoadTranslations("melee.phrases");
@@ -170,6 +174,7 @@ public OnConfigsExecuted()
 	g_bHealing = GetConVarBool(g_hCvarHealing);
 	g_iMeleeMode = GetConVarInt(g_hCvarMeleeMode);
 	g_bJumper = GetConVarBool(g_hCvarJumper);
+	g_bJetpack = GetConVarBool(g_hCvarJetpack);
 	g_bCircuit = GetConVarBool(g_hCvarCircuit);
 	
 	new Handle:hTopMenu;
@@ -249,6 +254,11 @@ public ConVarChange_Mode(Handle:convar, const String:oldValue[], const String:ne
 public ConVarChange_Jumper(Handle:convar, const String:oldValue[], const String:newValue[])
 {
 	g_bJumper = bool:StringToInt(newValue);
+}
+
+public ConVarChange_Jetpack(Handle:convar, const String:oldValue[], const String:newValue[])
+{
+	g_bJetpack = bool:StringToInt(newValue);
 }
 
 public ConVarChange_Circuit(Handle:convar, const String:oldValue[], const String:newValue[])
@@ -350,6 +360,7 @@ bool CanUseWeapon(int itemDef)
 		case 129,226,354,1001: return true; // The Buff Banner / The Battalion's Backup / The Concheror / Festive Buff Banner
 		case 29,35,411,211,663: return g_bHealing; // Medigun / Kritzcrieg / The Quick-Fix / Strange Medigun / Festive Medigun
 		case 237,265: return g_bJumper; // Rocket/Sticky Jumper
+		case 1179: return g_bJetpack; // Thermal Thruster
 		case 528: return g_bCircuit; // Short Circuit
 		case 1069,1070,5605: return true; // Spell Books
 		case 1152: return true; // Grappling Hook
