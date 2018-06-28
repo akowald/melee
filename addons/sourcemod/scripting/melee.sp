@@ -4,7 +4,7 @@
 #include <tf2>
 #include <tf2_stocks>
 
-#define PLUGIN_VERSION "0.6"
+#define PLUGIN_VERSION "0.7"
 
 #define ITEM_SPYCICLE 649
 
@@ -14,6 +14,7 @@ new bool:g_bRandomRound;
 new g_iMeleeMode;
 new bool:g_bJumper;
 new bool:g_bCircuit;
+new bool:g_bJetpack;
 
 new Handle:g_hCvarMeleeMode;
 new Handle:g_hCvarHealing;
@@ -24,6 +25,7 @@ new Handle:g_hCvarArena;
 new Handle:g_hCvarJumper;
 new Handle:g_hCvarCircuit;
 new Handle:g_hCvarHint;
+new Handle:g_hCvarJetpack;
 
 new Handle:g_hSDKWeaponSwitch;
 new Handle:g_hSDKWeaponReset;
@@ -44,7 +46,7 @@ new String:g_strOff[15];
 new Handle:g_hForwardMelee;
 new Handle:g_hForwardMeleeArena;
 
-public Plugin:myinfo = 
+public Plugin:myinfo =
 {
 	name = "Melee",
 	author = "linux_lover",
@@ -109,6 +111,7 @@ public OnPluginStart()
 	g_hCvarMeleeMode = CreateConVar("melee_mode", "0", "0 - Allow non-combat weapons | 1 - Only allow weapon in melee slot");
 	g_hCvarJumper = CreateConVar("melee_jumper", "0", "1 - Allow sticky/rocket jumper | 0 - Disallow these weapons");
 	g_hCvarCircuit = CreateConVar("melee_circuit", "0", "1 - Allow short circuit | 0 - Disallow short circuit");
+	g_hCvarJetpack = CreateConVar("melee_jetpack", "0", "1 - Allow thermal thruster | 0 - Disallow");
 	
 	g_hCvarHint = FindConVar("sm_vote_progress_hintbox");
 	
@@ -122,6 +125,7 @@ public OnPluginStart()
 	HookConVarChange(g_hCvarMeleeMode, ConVarChange_Mode);
 	HookConVarChange(g_hCvarJumper, ConVarChange_Jumper);
 	HookConVarChange(g_hCvarCircuit, ConVarChange_Circuit);
+	HookConVarChange(g_hCvarJetpack, ConVarChange_Jetpack);
 	
 	LoadTranslations("melee.phrases");
 	LoadTranslations("common.phrases");
@@ -171,6 +175,7 @@ public OnConfigsExecuted()
 	g_iMeleeMode = GetConVarInt(g_hCvarMeleeMode);
 	g_bJumper = GetConVarBool(g_hCvarJumper);
 	g_bCircuit = GetConVarBool(g_hCvarCircuit);
+	g_bJetpack = GetConVarBool(g_hCvarJetpack);
 	
 	new Handle:hTopMenu;
 	if(LibraryExists("adminmenu") && ((hTopMenu = GetAdminTopMenu()) != INVALID_HANDLE))
@@ -254,6 +259,11 @@ public ConVarChange_Jumper(Handle:convar, const String:oldValue[], const String:
 public ConVarChange_Circuit(Handle:convar, const String:oldValue[], const String:newValue[])
 {
 	g_bCircuit = bool:StringToInt(newValue);
+}
+
+public ConVarChange_Jetpack(Handle:convar, const String:oldValue[], const String:newValue[])
+{
+	g_bJetpack = bool:StringToInt(newValue);
 }
 
 SetMeleeMode(bool:bEnabled, bool:bVerbose=true)
@@ -344,7 +354,7 @@ bool CanUseWeapon(int itemDef)
 		case 25,26,28,737: return true; // Engineer's Build & Destroy PDAs / Builder / Upgradable Build PDA
 		case 140,1086: return true; // Wrangler / Festive Wrangler
 		case 58,1083,1105: return true; // Jarate / Festive Jarate / Self-Aware Beauty Mark
-		case 42,159,311,433,863,1002: return true; // Sandvich / Chocolate Bar / Buffalo Steak / Fishcake / Robo-Sandvich / Festive Sandvich
+		case 42,159,311,433,863,1002,1190: return true; // Sandvich / Chocolate Bar / Buffalo Steak / Fishcake / Robo-Sandvich / Festive Sandvich / Second Banana
 		case 46,163,222,1121,1145: return true; // Bonk / Crit-a-Cola / Mad Milk / Mutated Milk / Festive Bonk
 		case 27: return true; // Spy Disguise PDA
 		case 129,226,354,1001: return true; // The Buff Banner / The Battalion's Backup / The Concheror / Festive Buff Banner
@@ -353,6 +363,8 @@ bool CanUseWeapon(int itemDef)
 		case 528: return g_bCircuit; // Short Circuit
 		case 1069,1070,5605: return true; // Spell Books
 		case 1152: return true; // Grappling Hook
+		case 1179: return g_bJetpack; // Thermal Thruster
+		case 1180: return true; // Gas Passer
 	}
 
 	if(CanUseWeaponInStrict(itemDef)) return true;
@@ -449,14 +461,14 @@ public OnAdminMenuReady(Handle:hTopMenu)
 
 public AdminMenu_Melee(Handle:topmenu, TopMenuAction:action, TopMenuObject:object_id, param, String:buffer[], maxlength)
 {
-    if(action == TopMenuAction_DisplayOption)
-    {
-        Format(buffer, maxlength, "Toggle melee: %s", g_bEnabled ? g_strOff : g_strOn);
-    }else if(action == TopMenuAction_SelectOption)
-    {
+	if(action == TopMenuAction_DisplayOption)
+	{
+		Format(buffer, maxlength, "Toggle melee: %s", g_bEnabled ? g_strOff : g_strOn);
+	}else if(action == TopMenuAction_SelectOption)
+	{
 		Command_Melee(param, 0);
 		DisplayTopMenu(g_hTopMenu, param, TopMenuPosition_LastCategory);
-    }
+	}
 }
 
 public AdminMenu_VoteMelee(Handle:topmenu, TopMenuAction:action, TopMenuObject:object_id, param, String:buffer[], maxlength)
@@ -591,22 +603,20 @@ public Native_GetMeleeMode(Handle:plugin, numParams)
 
 bool:TestVoteDelay(client)
 {
- 	new delay = CheckVoteDelay();
- 	
- 	if (delay > 0)
- 	{
- 		if (delay > 60)
- 		{
- 			ReplyToCommand(client, "[SM] %t", "Vote Delay Minutes", delay % 60);
- 		}
- 		else
- 		{
- 			ReplyToCommand(client, "[SM] %t", "Vote Delay Seconds", delay);
- 		}
- 		
- 		return false;
- 	}
- 	
+	new delay = CheckVoteDelay();
+	
+	if(delay > 0)
+	{
+		if(delay > 60)
+		{
+			ReplyToCommand(client, "[SM] %t", "Vote Delay Minutes", delay % 60);
+		}else{
+			ReplyToCommand(client, "[SM] %t", "Vote Delay Seconds", delay);
+		}
+		
+		return false;
+	}
+	
 	return true;
 }
 
