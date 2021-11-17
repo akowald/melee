@@ -6,8 +6,8 @@
 		{
 			"CTFWeaponBase::WeaponReset"
 			{
-				"linux"		"426"
-				"windows"	"419"
+				"linux"		"427"
+				"windows"	"420"
 			}
 		}
 	}
